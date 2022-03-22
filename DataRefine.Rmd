@@ -1,0 +1,648 @@
+---
+title: "GulfCorals"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Packages used throughout document:
+library(plyr)
+library(readr)
+library(ggplot2)
+library(GGally)
+library(dplyr)
+library(mlbench)
+```
+
+#For first look, going to work with genus-level IDs at specific depth ranges of interest.
+First, need to determine best way to sort out the area we are interested in. Potential location identifies: 
+  'Ocean': Interested in "North Atlantic", but still larger than wanted
+  'FishCouncilRegion': Interested in "South Atlantic" and "Gulf of Mexico"
+  'Locality': Probably too specific
+  'Country': Interested in "USA" "Mexico", but council regions preferred 
+
+```{r}
+AllData <- read.csv("C:/Users/17572/Desktop/AllData.csv")
+glimpse(AllData)
+```
+
+```{r}
+Cat56L2<- read.csv("C:/Users/17572/Desktop/Cat56L2.csv")
+View(Cat56L2)
+```
+
+```{r}
+#Which of the 4 locality identifies have missing values?
+head(apply(Cat56L2,2,anyNA))
+#All values present for 'Ocean', other three categories have missing data (represented as 'NA')
+```
+
+```{r}
+#What proportion of the data in each column is 'NA'?
+  #Total number of rows = 791907
+  colSums(is.na(Cat56L2))
+```
+
+#Percent of data available for use in each category:
+  'Ocean': (791907/791907)*100 = 100%
+  'FishCouncilRegion': ((791907-26444)/791907)*100 = 96.66%
+  'Locality': ((791907-59246)/791907)*100 = 92.52%
+  'Country': ((791907-122108)/791907)*100 = 84.58%
+  
+#'FishCouncilRegion' will be used to filter the data for the remainder of this exercise
+
+```{r}
+Cat56L<- read.csv("C:/Users/17572/Desktop/Cat56L.csv")
+View(Cat56L)
+```
+
+```{r}
+glimpse(Cat56L)
+```
+
+```{r}
+#What proportion of the data in each column is 'NA'?
+  #Total number of rows = 791907
+  colSums(is.na(Depth2))
+```
+
+```{r}
+#Filter large data set to include only samples from the "South Atlantic" and "Gulf of Mexico" Fish Council Regions
+Regions<-c("Gulf of Mexico","South Atlantic")
+Cat56<-Cat56L %>% filter(FishCouncilRegion==Regions)
+glimpse(Cat56)
+```
+
+```{r}
+#Start by filtering for the desired depth range, as "DepthInMeters" is already an 'int' value
+Depth1<-Cat56 %>% filter(30<=DepthInMeters)
+Depth2<-Depth1 %>% filter(DepthInMeters<=300)
+summary(Depth2$DepthInMeters)
+glimpse(Depth2)
+#Check that the min and max displayed in the summary are the same as those specified above
+```
+
+```{r}
+#
+Swiftia<-Depth2 %>% filter(Genus=="Swiftia")
+glimpse(Swiftia)
+```
+
+#There are 754 records of Genus Swiftia in the Gulf of Mexico/South Atlantic, between 30 and 300m of depth to work with for the rest of the analysis
+
+##Starting over with big data set
+
+```{r}
+#Which of the 4 locality identifies have missing values?
+head(apply(AllData,2,anyNA))
+#All values present for 'Ocean', other three categories have missing data (represented as 'NA')
+```
+
+```{r}
+#What proportion of the data in each column is 'NA'?
+  #Total number of rows = 791907
+  colSums(is.na(AllData))
+```
+
+#Percent of data available for use in each category:
+  'Ocean': (791907/791907)*100 = 100%
+  'FishCouncilRegion': ((791907-26444)/791907)*100 = 96.66%
+  'Locality': ((791907-59246)/791907)*100 = 92.52%
+  'Country': ((791907-122108)/791907)*100 = 84.58%
+  
+#'FishCouncilRegion' will be used to filter the data for the remainder of this exercise
+
+```{r}
+Cat56L<- read.csv("C:/Users/17572/Desktop/Cat56L.csv")
+View(Cat56L)
+```
+
+```{r}
+glimpse(Cat56L)
+```
+
+```{r}
+#What proportion of the data in each column is 'NA'?
+  #Total number of rows = 791907
+  colSums(is.na(Depth2))
+```
+
+```{r}
+#Filter large data set to include only samples from the "South Atlantic" and "Gulf of Mexico" Fish Council Regions
+Regions<-c("Gulf of Mexico","South Atlantic")
+AllDataRegions<-AllData %>% filter(FishCouncilRegion==Regions)
+glimpse(AllDataRegions)
+```
+
+#Swiftia, Thesia, and Muricea: 30-300m Depth Range 
+
+```{r}
+#Depth limits
+Depth3<-AllDataRegions %>% filter(30<=DepthInMeters)
+Depth4<-Depth3 %>% filter(DepthInMeters<=300)
+summary(Depth4$DepthInMeters)
+glimpse(Depth4)
+#Check that the min and max displayed in the summary are the same as those specified above
+```
+
+```{r}
+ScientificNames<-subset(AllDataRegions, select=c(ScientificName))
+View(ScientificNames)
+freq<-sapply(ScientificNames, function(x) table(factor(x, levels=ScientificNames$SceintificName, order=TRUE)))
+print(freq)
+```
+```{r}
+#All names included in data base with frequencies
+table(AllData['ScientificName'])
+#All names included in GOM and South Atlantic, 30-300m, with frequencies 
+table(Depth4['ScientificName'])
+#All names included in GOM and South Atlantic, 1000-3000m, with frequencies 
+table(Depth6['ScientificName'])
+```
+
+
+```{r}
+#Now location and depth range have been determined, so combine all swiftia of interest in the 'ScientificName' field
+Swiftia1<-Depth4 %>% filter(ScientificName=="Swiftia")
+SwiftiaCasta<-Depth4 %>% filter(ScientificName=="Swiftia casta")
+SwiftiaExserta<-Depth4 %>% filter(ScientificName=="Swiftia exserta")
+SwiftiaKoreni<-Depth4 %>% filter(ScientificName=="Swiftia koreni")
+#Combine all occurrences into the final "Swiftia" Data Set:
+Swiftia<-rbind(Swiftia1,SwiftiaCasta,SwiftiaExserta,SwiftiaKoreni)
+glimpse(Swiftia)
+```
+
+```{r}
+SwiftiaCasta<-Depth4 %>% filter(ScientificName=="Swiftia casta")
+glimpse(SwiftiaCasta)
+```
+
+```{r}
+SwiftiaExserta<-Depth4 %>% filter(ScientificName=="Swiftia exserta")
+glimpse(SwiftiaExserta)
+```
+
+```{r}
+SwiftiaKoreni<-Depth4 %>% filter(ScientificName=="Swiftia koreni")
+glimpse(SwiftiaKoreni)
+```
+
+```{r}
+#Combine all occurrences into the final "Swiftia" Data Set:
+Swiftia<-rbind(Swiftia1,SwiftiaCasta,SwiftiaExserta,SwiftiaKoreni)
+glimpse(Swiftia)
+```
+
+```{r}
+#Now do the same for Thesea
+Thesea1<-Depth4 %>% filter(ScientificName=="Thesea")
+glimpse(Thesea1)
+```
+
+```{r}
+TheseaCFCitrina<-Depth4 %>% filter(ScientificName=="Thesea cf. citrina")
+glimpse(TheseaCFCitrina)
+```
+
+```{r}
+TheseaSolitaria<-Depth4 %>% filter(ScientificName=="Thesea solitaria")
+glimpse(TheseaSolitaria)
+```
+
+```{r}
+Thesea<-rbind(Thesea1, TheseaCFCitrina, TheseaCFGuadalupensis, TheseaCFHebes, TheseaCFParviflora, TheseaCitrina, TheseaGrandiflora, TheseaGranulosa, TheseaNivea, TheseaNutans, TheseaParviflora, TheseaPlana, TheseaRubra, TheseaRugosa, TheseaSolitaria)
+glimpse(Thesea)
+```
+
+```{r}
+#Muricea
+Muricea1<-Depth4 %>% filter(ScientificName=="Muricea")
+glimpse(Muricea1)
+```
+
+```{r}
+HypnogorgiaPendula<-Depth4 %>% filter(ScientificName=="Hypnogorgia pendula")
+glimpse(HypnogorgiaPendula)
+```
+
+```{r}
+Muricea<-rbind(Muricea1, MuriceaPendula, HypnogorgiaPendula)
+glimpse(Muricea)
+```
+
+
+#Paramuricea: 1000-3000m Depth Range 
+
+```{r}
+#Depth limits
+Depth5<-AllDataRegions %>% filter(1000<=DepthInMeters)
+Depth6<-Depth5 %>% filter(DepthInMeters<=3000)
+summary(Depth6$DepthInMeters)
+glimpse(Depth6)
+#Check that the min and max displayed in the summary are the same as those specified above
+```
+
+```{r}
+ParamuriceaPlacomus<-Depth6 %>% filter(ScientificName=="Paramuricea placomus")
+glimpse(ParamuriceaPlacomus)
+```
+
+```{r}
+Paramuricea<-rbind(Paramuricea1, ParamuriceaBiscaya)
+glimpse(Paramuricea)
+```
+
+#Now what percent of each category has usable data within these 4 groups of interest?
+
+```{r}
+AllGroups<-rbind(Swiftia, Thesea, Muricea, Paramuricea)
+glimpse(AllGroups)
+```
+
+```{r}
+colSums(is.na(AllGroups))
+```
+
+```{r}
+summary(AllGroups$OperationalTaxonomicUnit)
+```
+
+```{r}
+MinimumSize<-AllGroups %>% filter(-999.00<MinimumSize)
+glimpse(MinimumSize)
+```
+
+```{r}
+GroupPercents <- read.csv("C:/Users/17572/Desktop/GroupPercents.csv")
+ View(GroupPercents)
+```
+
+
+```{r}
+colnames(GroupPercents)[1]<-"FieldName"
+Rank6<-GroupPercents %>% filter(Rankings==6)
+Rank5<-GroupPercents %>% filter(Rankings==5)
+Rank4<-GroupPercents %>% filter(Rankings==4)
+Rank3<-GroupPercents %>% filter(Rankings==3)
+Rank2<-GroupPercents %>% filter(Rankings==2)
+Rank1<-GroupPercents %>% filter(Rankings==1)
+Rank0<-GroupPercents %>% filter(Rankings==0)
+```
+
+```{r}
+#Rank 6 categories
+ggplot(data=Rank6, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=FieldName)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.5, hjust=1.5, color="black", size=3.5)+
+  theme(legend.position = "none", plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRank 6 Field of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")
+```
+
+```{r}
+#Rank 5 categories
+ggplot(data=Rank5, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=FieldName)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.5, hjust=1.5, color="black", size=3.5)+
+  theme(legend.position = "none", plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRank 5 Field of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")
+```
+
+```{r}
+#Rank 4 categories
+ggplot(data=Rank4, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=FieldName)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.3, hjust=1.5, color="black", size=2.5)+
+  theme(legend.position = "none", plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRank 4 Field of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")
+```
+
+```{r}
+#Rank 3 categories
+ggplot(data=Rank3, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=FieldName)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.3, hjust=1.5, color="black", size=2.5)+
+  theme(legend.position = "none", plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRank 3 Field of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")
+```
+
+```{r}
+#Rank 2 categories
+ggplot(data=Rank2, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=FieldName)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.4, hjust=1.5, color="black", size=3.5)+
+  theme(legend.position = "none", plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRank 2 Field of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")
+```
+
+```{r}
+#Rank 1 categories
+ggplot(data=Rank1, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=FieldName)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.4, hjust=1.5, color="black", size=3.5)+
+  theme(legend.position = "none", plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRank 1 Field of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")
+```
+
+```{r}
+#Rank 0 categories
+ggplot(data=Rank0, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=FieldName)) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.5, hjust=1.5, color="black", size=3.5)+
+  theme(legend.position = "none", plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRank 0 Field of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")
+```
+
+```{r}
+#Percent Completion, including all groups 0 < % Completion < 100
+GreaterThan0<-GroupPercents %>% filter(0<Percent.Usable.Data)
+LessThan100<-GreaterThan0 %>% filter(Percent.Usable.Data<100)
+summary(LessThan100$Percent.Usable.Data)
+```
+
+```{r}
+#All ranks, percent completions >0 and <100
+ggplot(data=LessThan100, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=factor(Rankings))) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.5, hjust=1.5, color="black", size=3.5)+
+  theme(plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nFields of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")+
+  scale_fill_discrete(guide = guide_legend(reverse=TRUE), name="Ranking")
+```
+```{r}
+#Percent Completion, split in half by percentage
+GreaterThan50<-LessThan100 %>% filter(50<Percent.Usable.Data)
+LessThan50<-LessThan100 %>% filter(Percent.Usable.Data<50)
+summary(GreaterThan50$Percent.Usable.Data)
+summary(LessThan50$Percent.Usable.Data)
+```
+```{r}
+#All ranks, greater than 50%
+ggplot(data=GreaterThan50, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=factor(Rankings))) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.35, hjust=1.2, color="black", size=3)+
+  theme(plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nFields of Interest, 50-99% Completion", x="Field Name", y="Percent of Field Filled (%)")+
+  scale_fill_discrete(guide = guide_legend(reverse=TRUE), name="Ranking")
+```
+```{r}
+#All ranks, less than 50%
+ggplot(data=LessThan50, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=factor(Rankings))) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.35, hjust=1.2, color="black", size=2.9)+
+  theme(plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nFields of Interest, 1-49% Completion", x="Field Name", y="Percent of Field Filled (%)")+
+  scale_fill_discrete(guide = guide_legend(reverse=TRUE), name="Ranking")
+```
+```{r}
+#Grouping ranks 6-4 and 3-0
+Rank54<-rbind(Rank5,Rank4)
+Rank32<-rbind(Rank3,Rank2)
+Rank10<-rbind(Rank1,Rank0)
+#Percent Completion, including all groups 0 < % Completion < 100
+GreaterThan0a<-Rank54 %>% filter(0<Percent.Usable.Data)
+LessThan100a<-GreaterThan0a %>% filter(Percent.Usable.Data<100)
+summary(LessThan100a$Percent.Usable.Data)
+GreaterThan0b<-Rank32 %>% filter(0<Percent.Usable.Data)
+LessThan100b<-GreaterThan0b %>% filter(Percent.Usable.Data<100)
+summary(LessThan100b$Percent.Usable.Data)
+GreaterThan0c<-Rank10 %>% filter(0<Percent.Usable.Data)
+LessThan100c<-GreaterThan0c %>% filter(Percent.Usable.Data<100)
+summary(LessThan100b$Percent.Usable.Data)
+```
+```{r}
+#Ranks 4-5, >0% and <100%
+ggplot(data=LessThan100a, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=factor(Rankings))) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.35, hjust=1.2, color="black", size=2.9)+
+  theme(plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRanks 4 and 5 Fields of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")+
+  scale_fill_discrete(guide = guide_legend(reverse=TRUE), name="Ranking")
+```
+```{r}
+#Ranks 2-3, >0% and <100%
+ggplot(data=LessThan100b, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=factor(Rankings))) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.35, hjust=1.2, color="black", size=2.5)+
+  theme(plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRanks 2 and 3 Fields of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")+
+  scale_fill_discrete(guide = guide_legend(reverse=TRUE), name="Ranking")
+```
+```{r}
+#Ranks 0-1, >0% and <100%
+ggplot(data=LessThan100c, aes(x=reorder(FieldName, +Percent.Usable.Data), y=Percent.Usable.Data, fill=factor(Rankings))) +
+  geom_bar(stat="identity")+
+  geom_text(aes(label=Percent.Usable.Data), vjust=0.35, hjust=1.2, color="black", size=3.5)+
+  theme(plot.title=element_text(hjust=0.5))+
+  coord_flip()+
+  labs(title="NOAA Deep Sea Coral Data Portal:\nRanks 0 and 1 Fields of Interest Percent Completion", x="Field Name", y="Percent of Field Filled (%)")+
+  scale_fill_discrete(guide = guide_legend(reverse=TRUE), name="Ranking")
+```
+
+```{r}
+glimpse(AllGroups)
+```
+```{r}
+Temperature<-AllGroups %>% filter(-999==Temperature)
+table(Temperature$ScientificName)
+```
+```{r}
+Salinity<-AllGroups %>% filter(-999==Salinity)
+table(Salinity$ScientificName)
+```
+
+```{r}
+Oxygen<-AllGroups %>% filter(-999==Oxygen)
+table(Oxygen$ScientificName)
+```
+
+```{r}
+table(AllGroups$SamplingEquipment)
+```
+
+```{r}
+Temperature2<-AllGroups %>% filter(-999<Temperature)
+table(Temperature2$Locality)
+```
+
+```{r}
+L34.75<-Paramuricea %>% filter(34.5000<latitude)
+L34.25<-L34.75 %>% filter(34.0000<latitude)
+L33.75<-L34.25 %>% filter(33.5000<latitude)
+L33.25<-L33.75 %>% filter(33.0000<latitude)
+L32.75<-L33.25 %>% filter(32.5000<latitude)
+L32.25<-L32.75 %>% filter(32.0000<latitude)
+L31.75<-L32.25 %>% filter(31.5000<latitude)
+L31.25<-L31.75 %>% filter(31.0000<latitude)
+L30.75<-L31.25 %>% filter(30.5000<latitude)
+L30.25<-L30.75 %>% filter(30.0000<latitude)
+L29.75<-L30.25 %>% filter(29.5000<latitude)
+L29.25<-L29.75 %>% filter(29.0000<latitude)
+L28.75<-L29.25 %>% filter(28.5000<latitude)
+L28.25<-L28.75 %>% filter(28.0000<latitude)
+L27.75<-L28.25 %>% filter(27.5000<latitude)
+L27.25<-L27.75 %>% filter(27.0000<latitude)
+L26.75<-L27.25 %>% filter(26.5000<latitude)
+L26.25<-L26.75 %>% filter(26.0000<latitude)
+L25.75<-L26.25 %>% filter(25.5000<latitude)
+L25.25<-L25.75 %>% filter(25.0000<latitude)
+L24.75<-L25.25 %>% filter(24.5000<latitude)
+L24.25<-L24.75 %>% filter(24.0000<latitude)
+L23.75<-L24.25 %>% filter(23.5000<latitude)
+L23.25<-L23.75 %>% filter(23.0000<latitude)
+L22.75<-L23.25 %>% filter(22.5000<latitude)
+L22.25<-L22.75 %>% filter(22.0000<latitude)
+L21.75<-L22.25 %>% filter(21.5000<latitude)
+L21.25<-L21.75 %>% filter(21.0000<latitude)
+L20.75<-L21.25 %>% filter(20.5000<latitude)
+L20.25<-L20.75 %>% filter(20.0000<latitude)
+ParamuriceaLat<-rbind(L20.25,L20.75,L21.25,L21.75,L22.25,L22.75,L23.25,L23.75,L24.25,L24.75,L25.25,L25.75,L26.25,L26.75,L27.25,L27.75,L28.2,L28.75,L29.25,L29.75,L30.25,L30.75,L31.25,L31.75,L32.25,L32.75,L33.25,L33.75,L34.25,L34.75)
+```
+
+```{r}
+L75.25<-Paramuricea %>% filter(-75.5000<longitude)
+L75.75<-L75.25 %>% filter(-76.0000<longitude)
+L76.25<-L75.75 %>% filter(-76.5000<longitude)
+L76.75<-L76.25 %>% filter(-77.0000<longitude)
+L77.25<-L76.75 %>% filter(-77.5000<longitude)
+L77.75<-L77.25 %>% filter(-78.0000<longitude)
+L78.25<-L77.75 %>% filter(-78.5000<longitude)
+L78.75<-L78.25 %>% filter(-79.0000<longitude)
+L79.25<-L78.75 %>% filter(-79.5000<longitude)
+L79.75<-L79.25 %>% filter(-80.0000<longitude)
+L80.25<-L79.75 %>% filter(-80.5000<longitude)
+L80.75<-L80.25 %>% filter(-81.0000<longitude)
+L81.25<-L80.75 %>% filter(-81.5000<longitude)
+L81.75<-L81.25 %>% filter(-82.0000<longitude)
+L82.25<-L81.75 %>% filter(-82.5000<longitude)
+L82.75<-L82.25 %>% filter(-83.0000<longitude)
+L83.25<-L82.75 %>% filter(-83.5000<longitude)
+L83.75<-L83.25 %>% filter(-84.0000<longitude)
+L84.25<-L83.75 %>% filter(-84.5000<longitude)
+L84.75<-L84.25 %>% filter(-85.0000<longitude)
+L85.25<-L84.75 %>% filter(-85.5000<longitude)
+L85.75<-L85.25 %>% filter(-86.0000<longitude)
+L86.25<-L85.75 %>% filter(-86.5000<longitude)
+L86.75<-L86.25 %>% filter(-87.0000<longitude)
+L87.25<-L86.75 %>% filter(-87.5000<longitude)
+L87.75<-L87.25 %>% filter(-88.0000<longitude)
+L88.25<-L87.75 %>% filter(-88.5000<longitude)
+L88.75<-L88.25 %>% filter(-89.0000<longitude)
+L89.25<-L88.75 %>% filter(-89.5000<longitude)
+L89.75<-L89.25 %>% filter(-90.0000<longitude)
+L90.25<-L89.75 %>% filter(-90.5000<longitude)
+L90.75<-L90.25 %>% filter(-91.0000<longitude)
+L91.25<-L90.75 %>% filter(-91.5000<longitude)
+L91.75<-L91.25 %>% filter(-92.0000<longitude)
+L92.25<-L91.75 %>% filter(-92.5000<longitude)
+L92.75<-L92.25 %>% filter(-93.0000<longitude)
+L93.25<-L92.75 %>% filter(-93.5000<longitude)
+L93.75<-L93.25 %>% filter(-94.0000<longitude)
+L94.25<-L93.75 %>% filter(-94.5000<longitude)
+L94.75<-L94.25 %>% filter(-95.0000<longitude)
+L95.25<-L94.75 %>% filter(-95.5000<longitude)
+L95.75<-L95.25 %>% filter(-96.0000<longitude)
+L96.25<-L95.75 %>% filter(-96.5000<longitude)
+L96.75<-L96.25 %>% filter(-97.0000<longitude)
+L97.25<-L96.75 %>% filter(-97.5000<longitude)
+L97.75<-L97.25 %>% filter(-98.0000<longitude)
+ParamuriceaLong<-rbind(L97.75,L97.25,L96.75,L96.25,L95.75,L95.25,L94.75,L94.25,L93.75,L93.25,L92.75,L92.25,L91.75,L91.25,L90.75,L90.25,L89.75,L89.25,L88.75,L88.25,L87.75,L87.25,L86.75,L86.25,L85.75,L85.25,L84.75,L84.25,L83.75,L83.25,L82.75,L82.25,L81.75,L81.25,L80.75,L80.25,L79.75,L79.25,L78.75,L78.25,L77.75,L77.25,L76.75,L76.25,L75.75,L75.25)
+```
+
+```{r}
+write.csv(Paramuricea, "/Users/17572/Desktop/Paramuricea.csv")
+```
+
+```{r}
+ParamuriceaLatLong<-read.csv("C:/Users/17572/Desktop/ParamuriceaLatLong.csv")
+View(ParamuriceaLatLong)
+```
+
+```{r}
+Para2875_8825_1<-Paramuricea %>% filter(28.5000<latitude)
+Para2875_8825_2<-Paramuricea %>% filter(latitude<29.0000)
+Para2875_8825_3<-Paramuricea %>% filter(-88.0000<longitude)
+Para2875_8825_4<-Paramuricea %>% filter(latitude< -88.5000)
+View(Para2875_8825_4)
+ggplot(Para2875_8825_4, aes(x=longitude, y=latitude))+
+  geom_point()
+```
+
+```{r}
+ggplot(Paramuricea, aes(x=longitude, y=latitude))+
+  geom_point()
+```
+
+```{r}
+table(Paramuricea$Locality)
+```
+```{r}
+ParaMC294<-Paramuricea %>% filter(Locality=="MC294")
+ParaMC297<-Paramuricea %>% filter(Locality=="MC297")
+ParaMC344<-Paramuricea %>% filter(Locality=="MC344")
+ParaAT357<-Paramuricea %>% filter(Locality=="AT357")
+ParaGC852<-Paramuricea %>% filter(Locality=="GC852")
+ParaMC506<-Paramuricea %>% filter(Locality=="MC506")
+ParaMC036<-Paramuricea %>% filter(Locality=="MC36")
+```
+
+```{r}
+summary(ParaMC036$latitude)
+summary(ParaMC036$longitude)
+```
+```{r}
+AllData2 <- read.csv("C:/Users/17572/Desktop/AllData2.csv")
+View(AllData2)
+```
+
+```{r}
+GOM<-AllData %>% filter(FishCouncilRegion=="Gulf of Mexico")
+GOM200<-GOM %>% filter(200<=DepthInMeters)
+GOM200Limited<-GOM200 %>% filter(2009<=ObservationYear)
+GOM200Limited2<-GOM200Limited %>% filter(ObservationYear<=2011)
+glimpse(GOM200Limited2)
+```
+```{r}
+Para2MC294<-GOM200Limited2 %>% filter(Locality=="MC294")
+Para2MC297<-GOM200Limited2 %>% filter(Locality=="MC297")
+Para2MC344<-GOM200Limited2 %>% filter(Locality=="MC344")
+Para2AT357<-GOM200Limited2 %>% filter(Locality=="AT357")
+Para2GC852<-GOM200Limited2 %>% filter(Locality=="GC852")
+Para2MC5067<-GOM200Limited2 %>% filter(Locality=="MC506/7")
+Para2MC036<-GOM200Limited2 %>% filter(Locality=="MC036")
+Para2MC118<-GOM200Limited2 %>% filter(Locality=="MC118")
+Para2MC203<-GOM200Limited2 %>% filter(Locality=="MC203")
+Para2MC388<-GOM200Limited2 %>% filter(Locality=="MC388")
+Para2DC583<-GOM200Limited2 %>% filter(Locality=="DC583")
+Para2DC673<-GOM200Limited2 %>% filter(Locality=="DC673")
+Para2GC140<-GOM200Limited2 %>% filter(Locality=="GC140")
+Para2GB299<-GOM200Limited2 %>% filter(Locality=="GB299")
+Para2VK906<-GOM200Limited2 %>% filter(Locality=="VK906")
+Para2MC751<-GOM200Limited2 %>% filter(Locality=="MC751")
+Para2GC354<-GOM200Limited2 %>% filter(Locality=="GC354")
+Para2GB535<-GOM200Limited2 %>% filter(Locality=="GB535")
+Para2AT047<-GOM200Limited2 %>% filter(Locality=="AT047")
+Para2GC246<-GOM200Limited2 %>% filter(Locality=="GC246")
+Para2MC159203<-GOM200Limited2 %>% filter(Locality=="MC159/203")
+Para2GC388<-GOM200Limited2 %>% filter(Locality=="GC388")
+```
+
+```{r}
+table(GOM200Limited2$Locality)
+```
+
+
